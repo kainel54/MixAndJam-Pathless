@@ -26,6 +26,7 @@ public class TargetSystem : MonoBehaviour
     [SerializeField] float screenDistanceWeight = 1;
     [SerializeField] float positionDistanceWeight = 8;
     public float minReachDistance = 70;
+    public float targetDisableCooldown = 4;
 
     [Header("User Interface")]
     public RectTransform rectImage;
@@ -52,7 +53,6 @@ public class TargetSystem : MonoBehaviour
             storedTarget = null;
             rectImage.gameObject.SetActive(false);
 
-            return;
         }
 
         Debug.Log("檣策蝶天天天天");

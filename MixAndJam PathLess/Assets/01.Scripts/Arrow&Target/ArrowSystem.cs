@@ -9,6 +9,7 @@ using UnityEngine.UI;
 
 public class ArrowSystem : MonoBehaviour
 {
+    [HideInInspector] public UnityEvent OnTargetHit;
     [HideInInspector] private UnityEvent OnInputStart;
     [HideInInspector] public UnityEvent OnInputRelease;
     [HideInInspector] public UnityEvent<float> OnArrowRelease;
@@ -44,6 +45,8 @@ public class ArrowSystem : MonoBehaviour
 
     [Header("Input")]
     public InputActionReference fireAction;
+
+    public ParticleSystem particleTest;
     private void Awake()
     {
         targetSystem = GetComponent<TargetSystem>();
@@ -186,6 +189,19 @@ public class ArrowSystem : MonoBehaviour
             yield return new WaitForSeconds(arrowCooldown);
             active = true;
         }
+    }
+
+    public void TargetHit(Vector3 dir)
+    {
+        OnTargetHit.Invoke();
+
+        active = true;
+        releaseCooldown = false;
+        lockedTarget.DisableTarget(dir);
+
+        var shape = particleTest.shape;
+        shape.position = transform.InverseTransformPoint(lockedTarget.transform.position);
+        particleTest.Play();
     }
 
     

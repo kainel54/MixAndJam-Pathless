@@ -593,6 +593,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dcf564bb2a5f7644bacb3191928b8faf, type: 3}
+--- !u!4 &297451167 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2970148365805308159, guid: bd6ee82c5e06b3f4f86113cbf8261ae1,
+    type: 3}
+  m_PrefabInstance: {fileID: 4757836857439838588}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &327013061
 GameObject:
   m_ObjectHideFlags: 0
@@ -2922,6 +2928,7 @@ MonoBehaviour:
   screenDistanceWeight: 1.05
   positionDistanceWeight: 2.5
   minReachDistance: 60
+  targetDisableCooldown: 4
   rectImage: {fileID: 327013062}
   rectSizeMultiplier: 15
   focusPointRect: {fileID: 327013062}
@@ -2938,10 +2945,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dfda437984c4f54409691c2155e1d51d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  OnTargetHit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnInputRelease:
+    m_PersistentCalls:
+      m_Calls: []
+  OnArrowRelease:
+    m_PersistentCalls:
+      m_Calls: []
   arrowCooldown: 0.5
+  wrongArrowEmission: {fileID: 0}
+  correctArrowEmission: {fileID: 0}
+  arrowReleasePoint: {fileID: 297451167}
   active: 0
   isCharging: 0
   releaseCooldown: 0
+  chargeDuration: 0.8
+  chargeEase: 0
+  middleChargePrecision: 0.5
+  slowDownInterval: 0
+  arrowPrecisionSlider: {fileID: 0}
+  fireAction: {fileID: 233397777600672752, guid: 0e2497137d364834d8ac6d5916db277a,
+    type: 3}
+  particleTest: {fileID: 0}
 --- !u!1001 &5112805286921584312
 PrefabInstance:
   m_ObjectHideFlags: 0

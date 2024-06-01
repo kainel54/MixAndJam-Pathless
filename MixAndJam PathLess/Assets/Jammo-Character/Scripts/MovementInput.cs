@@ -1,151 +1,292 @@
-
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using UnityEngine.InputSystem;
+using UnityEngine.Events;
+using Cinemachine;
+using DG.Tweening;
 
-//This script requires you to have setup your animator with 3 parameters, "InputMagnitude", "InputX", "InputZ"
-//With a blend tree to control the inputmagnitude and allow blending between animations.
 [RequireComponent(typeof(CharacterController))]
-public class MovementInput : MonoBehaviour {
+public class MovementInput : MonoBehaviour
+{
+    [HideInInspector] public UnityEvent OnMovementBoost;
 
-    public float Velocity;
-    [Space]
+    private BoostSystem boostSystem;
+    private ArrowSystem arrowSystem;
+    private TargetSystem targetSystem;
 
-	public float InputX;
-	public float InputZ;
-	public Vector3 desiredMoveDirection;
-	public bool blockRotationPlayer;
-	public float desiredRotationSpeed = 0.1f;
-	public Animator anim;
-	public float Speed;
-	public float allowPlayerRotation = 0.1f;
-	public Camera cam;
-	public CharacterController controller;
-	public bool isGrounded;
-	public bool isJumping;
-	public bool isRunning;
-	public float jumpTimer;
-	public float jumpHoldTime;
-	public float jumpSpeed;
-	public float gravity = 9.8f;
+    private Animator anim;
+    private Camera cam;
+    private CharacterController controller;
+    private Vector3 desiredMoveDirection;
+    private Vector2 moveAxis;
+    private float verticalVel;
+    private Coroutine boostCoroutine;
 
-    [Header("Animation Smoothing")]
-    [Range(0, 1f)]
-    public float HorizontalAnimSmoothTime = 0.2f;
-    [Range(0, 1f)]
-    public float VerticalAnimTime = 0.2f;
-    [Range(0,1f)]
-    public float StartAnimTime = 0.3f;
-    [Range(0, 1f)]
-    public float StopAnimTime = 0.15f;
+    [Header("Movement Settings")]
+    [SerializeField] float movementSpeed;
+    [SerializeField] float rotationSpeed = 0.1f;
 
-    public float verticalVel;
-    private Vector3 moveVector;
+    [Header("Acceleration Settings")]
+    private float currentAcceleration = 1;
+    [SerializeField] float runAcceleration = 2;
+    private float accelerationMultiplier = 1f;
+    [SerializeField] float boostMultiplier = 1.5f;
+    [SerializeField] float boostDuration = 1;
+    [SerializeField] float accelerateLerp = .006f;
+    [SerializeField] float decelerateLerp = .05f;
+    [SerializeField] float runRotationSpeed = 100;
+    [SerializeField] float chargeStrafeSpeed = 15;
 
-	// Use this for initialization
-	void Start () {
-		anim = this.GetComponent<Animator> ();
-		cam = Camera.main;
-		controller = this.GetComponent<CharacterController> ();
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		InputMagnitude ();
+    [Header("Jump Settings")]
+    [SerializeField] float jumpSpeed = 8.0f;
+    [SerializeField] float jumpHoldTime = 0.2f;
+    [SerializeField] float jumpTimer;
+    [SerializeField] private float verticalVelocity;
+    [SerializeField] float gravity = 9.8f;
 
-        isGrounded = controller.isGrounded;
-        if (isGrounded)
+    [Header("Collision Settings")]
+    [SerializeField] LayerMask groundLayerMask;
+
+    [Header("Booleans")]
+    public bool isGrounded;
+    [SerializeField] bool isJumping;
+    [SerializeField] bool blockRotationPlayer;
+    public bool isRunning;
+    public bool isBoosting;
+    public bool finishedBoost;
+
+    [Header("Input")]
+    [SerializeField] InputActionReference runAction;
+    [HideInInspector] public bool holdRunInput;
+    [SerializeField] InputActionReference jumpAction;
+
+    void Start()
+    {
+        anim = this.GetComponent<Animator>();
+        cam = Camera.main;
+        controller = GetComponent<CharacterController>();
+
+        boostSystem = GetComponent<BoostSystem>();
+        arrowSystem = GetComponent<ArrowSystem>();
+        targetSystem = GetComponent<TargetSystem>();
+
+        arrowSystem.OnTargetHit.AddListener(Boost);
+
+        //Input
+        runAction.action.performed += RunAction_performed;
+        runAction.action.canceled += RunAction_canceled;
+        jumpAction.action.started += JumpAction_started;
+        jumpAction.action.canceled += JumpAction_cancelled;
+    }
+
+
+    void Update()
+    {
+        InputMagnitude();
+
+        CheckGrounded();
+
+        float lerp = finishedBoost ? accelerateLerp : decelerateLerp;
+        currentAcceleration = Mathf.Lerp(currentAcceleration, isRunning ? (runAcceleration * accelerationMultiplier) : 1, lerp * Time.deltaTime);
+
+        CheckJump();
+
+        if (holdRunInput && canRun() && moveAxis.magnitude > 0)
+            isRunning = true;
+    }
+
+    void CheckJump()
+    {
+        if (isJumping)
         {
-            verticalVel -= 0;
+            jumpTimer += Time.deltaTime;
+            float jumpHeight = Mathf.Clamp01(jumpTimer / jumpHoldTime);
+            verticalVelocity = jumpSpeed * jumpHeight;
+            if (verticalVelocity >= jumpSpeed)
+                isJumping = false;
         }
         else
         {
-            verticalVel -= 1;
+            verticalVelocity -= gravity * Time.deltaTime;
         }
-        moveVector = new Vector3(0, verticalVel * .2f * Time.deltaTime, 0);
-        controller.Move(moveVector);
-		if(Input.GetKeyDown (KeyCode.Space)&&isGrounded)
-		{
-			isJumping = true;
-		}
-		CheckJump();
 
+        controller.Move(Vector3.up * verticalVelocity * Time.deltaTime);
     }
 
-	private void CheckJump()
-	{
-		if (isJumping)
-		{
-			jumpTimer += Time.deltaTime;
-			float jumpHeight = Mathf.Clamp01(jumpTimer / jumpHoldTime);
-			verticalVel = jumpSpeed * jumpHeight;
-			if (verticalVel >= jumpSpeed)
-			{
-				isJumping = false;
-			}
-		}
-		else verticalVel -= gravity * Time.deltaTime;
 
-		controller.Move(Vector3.up * verticalVel * Time.deltaTime);
-	}
-
-    void PlayerMoveAndRotation() {
-		InputX = Input.GetAxis ("Horizontal");
-		InputZ = Input.GetAxis ("Vertical");
-
-		var camera = Camera.main;
-		var forward = cam.transform.forward;
-		var right = cam.transform.right;
-
-		forward.y = 0f;
-		right.y = 0f;
-
-		forward.Normalize ();
-		right.Normalize ();
-
-		desiredMoveDirection = forward * InputZ + right * InputX;
-
-		if (blockRotationPlayer == false) {
-			transform.rotation = Quaternion.Slerp (transform.rotation, Quaternion.LookRotation (desiredMoveDirection), desiredRotationSpeed);
-            controller.Move(desiredMoveDirection * Time.deltaTime * Velocity);
-		}
-	}
-
-    public void LookAt(Vector3 pos)
+    void CheckGrounded()
     {
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(pos), desiredRotationSpeed);
+        isGrounded = Physics.Raycast(transform.position + (transform.up * .05f), Vector3.down, .2f, groundLayerMask);
+        anim.SetBool("isGrounded", isGrounded);
+        anim.SetFloat("GroundedValue", isGrounded ? 0 : 1, .1f, Time.deltaTime);
     }
 
-    public void RotateToCamera(Transform t)
+    void PlayerMoveAndRotation()
     {
-
         var camera = Camera.main;
         var forward = cam.transform.forward;
         var right = cam.transform.right;
 
-        desiredMoveDirection = forward;
+        forward.y = 0f;
+        right.y = 0f;
 
-        t.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(desiredMoveDirection), desiredRotationSpeed);
+        forward.Normalize();
+        right.Normalize();
+
+        if (isRunning)
+        {
+            //Vector3 sideMovement = arrowSystem.isCharging ? transform.right * moveAxis.x : Vector3.zero;
+
+            transform.eulerAngles += new Vector3(0, moveAxis.x * Time.deltaTime * runRotationSpeed, 0);
+
+            controller.Move(transform.forward * movementSpeed * currentAcceleration * Time.deltaTime);
+
+            return;
+        }
+
+        desiredMoveDirection = forward * moveAxis.y + right * moveAxis.x;
+
+        if (blockRotationPlayer == false)
+        {
+            //Camera
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(desiredMoveDirection), rotationSpeed * currentAcceleration);
+            controller.Move(desiredMoveDirection * Time.deltaTime * (movementSpeed * currentAcceleration));
+        }
     }
 
-	void InputMagnitude() {
-		//Calculate Input Vectors
-		InputX = Input.GetAxis ("Horizontal");
-		InputZ = Input.GetAxis ("Vertical");
+    public void LookAt(Vector3 pos)
+    {
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(pos), rotationSpeed);
+    }
 
-		//anim.SetFloat ("InputZ", InputZ, VerticalAnimTime, Time.deltaTime * 2f);
-		//anim.SetFloat ("InputX", InputX, HorizontalAnimSmoothTime, Time.deltaTime * 2f);
 
-		//Calculate the Input Magnitude
-		Speed = new Vector2(InputX, InputZ).sqrMagnitude;
+    //Is listening to the ArrowSystem TargetHit function
+    public void Boost()
+    {
+        if (!holdRunInput)
+            return;
+
+        if (!isRunning && moveAxis.magnitude <= 0)
+            return;
+
+        OnMovementBoost.Invoke();
+
+        if (!isGrounded)
+            anim.SetTrigger("Flip");
+
+        finishedBoost = false;
+
+        if (boostCoroutine != null)
+            StopCoroutine(boostCoroutine);
+
+        boostCoroutine = StartCoroutine(BoostCoroutine());
+
+        IEnumerator BoostCoroutine()
+        {
+            if (!isGrounded)
+                isJumping = true;
+
+            isBoosting = true;
+            accelerationMultiplier = boostMultiplier;
+
+            yield return new WaitForSeconds(boostDuration);
+
+            isBoosting = false;
+            accelerationMultiplier = 1;
+            finishedBoost = true;
+
+            yield return new WaitForSeconds(1);
+
+            finishedBoost = false;
+        }
+    }
+
+
+    public void RotateToCamera(Transform t)
+    {
+        var forward = cam.transform.forward;
+
+        desiredMoveDirection = forward;
+        Quaternion lookAtRotation = Quaternion.LookRotation(desiredMoveDirection);
+        Quaternion lookAtRotationOnly_Y = Quaternion.Euler(transform.rotation.eulerAngles.x, lookAtRotation.eulerAngles.y, transform.rotation.eulerAngles.z);
+
+        t.rotation = Quaternion.Slerp(transform.rotation, lookAtRotationOnly_Y, rotationSpeed);
+    }
+
+    void InputMagnitude()
+    {
+        //Calculate the Input Magnitude
+        float inputMagnitude = new Vector2(moveAxis.x, moveAxis.y).sqrMagnitude;
 
         //Physically move player
+        if (inputMagnitude > 0.1f || isRunning)
+        {
+            anim.SetFloat("InputMagnitude", (isRunning ? 1 : inputMagnitude) * currentAcceleration, .1f, Time.deltaTime);
+            PlayerMoveAndRotation();
+        }
+        else
+        {
+            anim.SetFloat("InputMagnitude", inputMagnitude * currentAcceleration, .1f, Time.deltaTime);
+        }
+    }
 
-		if (Speed > allowPlayerRotation) {
-			anim.SetFloat ("Blend", Speed, StartAnimTime, Time.deltaTime);
-			PlayerMoveAndRotation ();
-		} else if (Speed < allowPlayerRotation) {
-			anim.SetFloat ("Blend", Speed, StopAnimTime, Time.deltaTime);
-		}
-	}
+    #region Input
+
+    public void OnMove(InputValue value)
+    {
+        moveAxis.x = value.Get<Vector2>().x;
+        moveAxis.y = value.Get<Vector2>().y;
+    }
+
+    private void JumpAction_started(InputAction.CallbackContext context)
+    {
+
+        if (controller.isGrounded)
+        {
+            anim.SetTrigger("Jump");
+            isJumping = true;
+            jumpTimer = 0.0f;
+        }
+
+    }
+
+    private void JumpAction_cancelled(InputAction.CallbackContext context)
+    {
+        isJumping = false;
+        jumpTimer = 0;
+    }
+
+    private void RunAction_canceled(InputAction.CallbackContext obj)
+    {
+        isRunning = false;
+        holdRunInput = false;
+    }
+
+    private void RunAction_performed(InputAction.CallbackContext obj)
+    {
+        holdRunInput = true;
+
+        if (canRun() && moveAxis.magnitude > 0)
+            isRunning = true;
+    }
+
+    #endregion
+
+    bool canRun()
+    {
+        bool state;
+        state = boostSystem != null ? (boostSystem.boostAmount > 0 ? true : false) : false;
+        return state;
+    }
+
+    private void OnDisable()
+    {
+        anim.SetFloat("InputMagnitude", 0);
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(transform.position + (transform.up * .05f), transform.position + (Vector3.down * .2f));
+    }
 }
