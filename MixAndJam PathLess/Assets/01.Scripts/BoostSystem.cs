@@ -8,7 +8,6 @@ public class BoostSystem : MonoBehaviour
 {
     private bool hasAvailableBoost;
     private MovementInput movement;
-    private ArrowSystem arrowSystem;
 
     [Header("Boost Values")]
     public float boostAmount;

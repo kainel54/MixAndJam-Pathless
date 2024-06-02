@@ -10,9 +10,11 @@ using UnityEngine.UI;
 public class ArrowSystem : MonoBehaviour
 {
     [HideInInspector] public UnityEvent OnTargetHit;
-    [HideInInspector] private UnityEvent OnInputStart;
+    [HideInInspector] public UnityEvent OnInputStart;
     [HideInInspector] public UnityEvent OnInputRelease;
     [HideInInspector] public UnityEvent<float> OnArrowRelease;
+    [HideInInspector] public UnityEvent OnTargetLost;
+
 
     private TargetSystem targetSystem;
     private ArrowTarget lockedTarget;
@@ -165,7 +167,7 @@ public class ArrowSystem : MonoBehaviour
         return chargeAmount >= 1 - middleChargePrecision;
     }
 
-    private bool HalfCharge()
+    public bool HalfCharge()
     {
         return chargeAmount > .5f - middleChargePrecision && chargeAmount < .5f+middleChargePrecision;
     }
