@@ -15,7 +15,7 @@ public class LookTestScript : MonoBehaviour
 
     private void Update()
     {
-        if(arrowTargetSystem.isAvilable)
+        if(arrowTargetSystem.isAvailable)
             transform.LookAt(target);
     }
 }

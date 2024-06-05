@@ -1,19 +1,18 @@
-using DG.Tweening;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
+using DG.Tweening;
 
+[SelectionBase]
 public class ArrowTarget : MonoBehaviour
 {
-    private Transform player;
-    private MovementInput playerMovement;
+    Transform player;
+    MovementInput playerMovement;
     private Renderer detectorRenderer;
     private Color originalColor;
 
-    [Header("Bool")]
-    public bool isAvilable = true;
+    [Header("Booleans")]
+    public bool isAvailable = true;
     public bool isReachable = false;
 
     [Header("Connections")]
@@ -24,8 +23,11 @@ public class ArrowTarget : MonoBehaviour
     [SerializeField] GameObject arrowObject;
     [SerializeField] Transform imageParent;
 
-    private void Awake()
+    private void Start()
     {
+        detectorRenderer = GetComponent<Renderer>();
+        originalColor = visualRenderer.material.color;
+
         playerMovement = FindObjectOfType<MovementInput>();
         player = playerMovement.transform;
     }
@@ -33,89 +35,92 @@ public class ArrowTarget : MonoBehaviour
     private void Update()
     {
         Vector3 playerToObject = transform.position - playerMovement.transform.position;
-        bool isBehindPlayer = (Vector3.Dot(Camera.main.transform.forward,playerToObject) < 0)&&playerMovement.isRunning;
+        bool isBehindPlayer = (Vector3.Dot(Camera.main.transform.forward, playerToObject) < 0) && playerMovement.isRunning;
 
         if (Vector3.Distance(transform.position, player.position) < TargetSystem.instance.minReachDistance && !isBehindPlayer && !isReachable)
         {
             isReachable = true;
-            if(TargetSystem.instance.targets.Contains(this))
-                TargetSystem.instance.targets.Add(this);
+            if (TargetSystem.instance.targets.Contains(this))
+                TargetSystem.instance.reachableTargets.Add(this);
         }
-        if ((Vector3.Distance(transform.position, player.position) > TargetSystem.instance.minReachDistance || isBehindPlayer)&& isReachable){
+
+        if ((Vector3.Distance(transform.position, player.position) > TargetSystem.instance.minReachDistance || isBehindPlayer) && isReachable)
+        {
             isReachable = false;
             if (TargetSystem.instance.reachableTargets.Contains(this))
                 TargetSystem.instance.reachableTargets.Remove(this);
+
             if (TargetSystem.instance.currentTarget == this)
+            {
                 TargetSystem.instance.StopTargetFocus();
+            }
         }
+
     }
 
     private void OnBecameVisible()
     {
-        Debug.Log("카메라 안임");
-        if (!TargetSystem.instance.targets.Contains(this) && isAvilable)
+        if (!TargetSystem.instance.targets.Contains(this) && isAvailable)
         {
-            TargetSystem.instance.targets.Add (this);
+            TargetSystem.instance.targets.Add(this);
 
-            if (this.isReachable)
-            {
+            if(this.isReachable)
                 TargetSystem.instance.reachableTargets.Add(this);
-            }
         }
     }
 
     private void OnBecameInvisible()
     {
-        Debug.Log("카메라 밖임");
         if (TargetSystem.instance.targets.Contains(this))
         {
             TargetSystem.instance.targets.Remove(this);
 
-            if (TargetSystem.instance.reachableTargets.Contains(this))
-                TargetSystem.instance.reachableTargets.Remove (this);
+            if(TargetSystem.instance.reachableTargets.Contains(this))
+                TargetSystem.instance.reachableTargets.Remove(this);
         }
 
         if(TargetSystem.instance.currentTarget == this)
         {
             TargetSystem.instance.StopTargetFocus();
         }
-    }
+     }
 
     public void DisableTarget(Vector3 dir)
     {
-        isAvilable = false;
+        isAvailable = false;
         particleDetector.enabled = false;
         arrowObject.SetActive(true);
 
-        visualRenderer.transform.DOPunchPosition(-Vector3.forward * 7, 0.5f, 2, 1, false);
+        visualRenderer.transform.DOPunchPosition(-Vector3.forward * 7, .5f, 2, 1, false);
         visualRenderer.material.color = Color.black;
         flameRenderer.enabled = false;
         hitParticle.Play();
 
-        if(TargetSystem.instance.targets.Contains(this))
-        {
+        if (TargetSystem.instance.targets.Contains(this))
             TargetSystem.instance.targets.Remove(this);
-        }
+
         if (TargetSystem.instance.reachableTargets.Contains(this))
             TargetSystem.instance.reachableTargets.Remove(this);
 
         StartCoroutine(ReactivateCoroutine());
-    }
 
-    private IEnumerator ReactivateCoroutine()
-    {
-        yield return new WaitForSeconds(TargetSystem.instance.targetDisableCooldown);
-        isAvilable = true;
-        visualRenderer.material.color = originalColor;
-        flameRenderer.enabled = true;
-        particleDetector.enabled = true;
-        arrowObject.SetActive(false);
-
-        if (detectorRenderer.isVisible && !TargetSystem.instance.targets.Contains(this))
+        IEnumerator ReactivateCoroutine()
         {
-            TargetSystem.instance.targets.Add(this);
-            if(this.isReachable)
-                TargetSystem.instance.reachableTargets.Add(this);
+            yield return new WaitForSeconds(TargetSystem.instance.targetDisableCooldown);
+            isAvailable = true;
+            visualRenderer.material.color = originalColor;
+            flameRenderer.enabled = true;
+            particleDetector.enabled = true;
+            arrowObject.SetActive(false);
+
+            if (detectorRenderer.isVisible && !TargetSystem.instance.targets.Contains(this))
+            {
+                TargetSystem.instance.targets.Add(this);
+                if (this.isReachable)
+                    TargetSystem.instance.reachableTargets.Add(this);
+            }
+
         }
     }
+
 }

@@ -136,4 +136,9 @@ public class TargetSystem : MonoBehaviour
         //arrowSystem.CancelFire(false);
         currentTarget = null;
     }
+    public void ClearStoredTarget()
+    {
+        storedTarget = null;
+    }
+
 }

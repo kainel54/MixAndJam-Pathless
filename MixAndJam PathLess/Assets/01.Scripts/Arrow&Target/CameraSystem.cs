@@ -1,5 +1,4 @@
 using Cinemachine;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,25 +9,25 @@ public class CameraSystem : MonoBehaviour
     private ArrowSystem arrowSystem;
     private TargetSystem targetSystem;
 
-    [Header("Connetions")]
-    [SerializeField] CinemachineFreeLook thirdPersonCam;
-    [SerializeField] CinemachineInputProvider cameraInputProvider;
-    [SerializeField] CinemachineImpulseSource defaultImpulse;
-    [SerializeField] CinemachineImpulseSource perfectImpulse;
+    [Header("Connections")]
+    [SerializeField] private CinemachineFreeLook thirdPersonCam;
+    [SerializeField] private CinemachineInputProvider cameraInputProvider;
+    [SerializeField] private CinemachineImpulseSource defaultImpulse;
+    [SerializeField] private CinemachineImpulseSource perfectImpulse;
 
     [Header("Camera Settings")]
-    [SerializeField] float boostFieldOfView = 100;
-    [SerializeField] float runFieldOfView = 85;
-    [SerializeField] float defaultFieldOfView = 40;
-    [SerializeField] float orbitBoostingRadius = 2.5f;
-    [SerializeField] float orbitRunningRadius = 3.5f;
-    [SerializeField] float orbitDefaultRadius = 15;
-    [SerializeField] float cameraOffsetAmount = .25f;
+    [SerializeField] private float boostFieldOfView = 100;
+    [SerializeField] private float runFieldOfView = 85;
+    [SerializeField] private float defaultFieldOfView = 40;
+    [SerializeField] private float orbitBoostingRadius = 2.5f;
+    [SerializeField] private float orbitRunningRadius = 3.5f;
+    [SerializeField] private float orbitDefaultRadius = 15;
+    [SerializeField] private float cameraOffsetAmount = .25f;
     private float originalCameraOffsetAmount;
-    [SerializeField] float cameraOffsetLerp = 1;
+    [SerializeField] private float cameraOffsetLerp = 1;
     private float originalCameraOffsetLerp;
 
-    private void Awake()
+    void Start()
     {
         movement = GetComponent<MovementInput>();
         arrowSystem = GetComponent<ArrowSystem>();
@@ -39,23 +38,30 @@ public class CameraSystem : MonoBehaviour
         arrowSystem.OnInputRelease.AddListener(UnlockCamera);
         arrowSystem.OnTargetLost.AddListener(UnlockCamera);
         arrowSystem.OnArrowRelease.AddListener(ArrowChargeCheck);
+
+        originalCameraOffsetAmount = cameraOffsetAmount;
+        originalCameraOffsetLerp = cameraOffsetLerp;
     }
 
-    private void Update()
+    void Update()
     {
+        //Replicate movement booleans
         bool isBoosting = movement.isBoosting;
         bool isRunning = movement.isRunning;
         bool finishedBoost = movement.finishedBoost;
 
+        //Set variables for readability
         float fov = isBoosting ? boostFieldOfView : (isRunning ? runFieldOfView : defaultFieldOfView);
-        float lerpAmount = finishedBoost ? 0.006f : 0.01f;
+        float lerpAmount = finishedBoost ? .006f : .01f;
 
         thirdPersonCam.m_Lens.FieldOfView = Mathf.Lerp(thirdPersonCam.m_Lens.FieldOfView, fov, lerpAmount);
 
-        for(int i = 0; i < 3; i++)
+        // Loop through all the Cinemachine Camera orbits
+        for (int i = 0; i < 3; i++)
         {
-            float newRadius = isBoosting ? orbitBoostingRadius : (isRunning ? orbitBoostingRadius : orbitDefaultRadius);
+            float newRadius = isBoosting ? orbitBoostingRadius : (isRunning ? orbitRunningRadius : orbitDefaultRadius);
             thirdPersonCam.m_Orbits[i].m_Radius = Mathf.Lerp(thirdPersonCam.m_Orbits[i].m_Radius, newRadius, lerpAmount);
+
             CinemachineComposer composer = thirdPersonCam.GetRig(i).GetCinemachineComponent<CinemachineComposer>();
             float targetScreenPos = targetSystem.lerpedTargetPos.x;
             float characterScreenPos = Camera.main.WorldToScreenPoint(transform.position).x;
@@ -69,29 +75,28 @@ public class CameraSystem : MonoBehaviour
         }
     }
 
-    private void ArrowChargeCheck(float charge)
+    void ArrowChargeCheck(float charge)
     {
         if (arrowSystem.HalfCharge())
-        {
             perfectImpulse.GenerateImpulse();
-        }
     }
 
-    private void LockCamera()
+    void Shake()
+    {
+        if (movement.isRunning || movement.holdRunInput)
+            defaultImpulse.GenerateImpulse();
+    }
+
+    void LockCamera()
     {
         if (cameraInputProvider != null)
             cameraInputProvider.enabled = false;
     }
 
-    private void UnlockCamera()
+    void UnlockCamera()
     {
-        if(cameraInputProvider!= null)
+        if (cameraInputProvider != null)
             cameraInputProvider.enabled = true;
     }
 
-    private void Shake()
-    {
-        if (movement.isRunning || movement.holdRunInput)
-            defaultImpulse.GenerateImpulse();
-    }
 }
