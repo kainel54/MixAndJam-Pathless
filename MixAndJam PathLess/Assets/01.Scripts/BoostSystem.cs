@@ -8,6 +8,7 @@ public class BoostSystem : MonoBehaviour
 {
     private bool hasAvailableBoost;
     private MovementInput movement;
+    private ArrowSystem arrowSystem;
 
     [Header("Boost Values")]
     public float boostAmount;
@@ -22,12 +23,24 @@ public class BoostSystem : MonoBehaviour
     [Header("UI")]
     [SerializeField] Slider boostSlider;
 
+    private void Start()
+    {
+        arrowSystem = GetComponent<ArrowSystem>();
+        movement = GetComponent<MovementInput>();
+
+        arrowSystem.OnTargetHit.AddListener(AddToBoost);
+        movement.OnMovementBoost.AddListener(ActivateBoostVisual);
+
+        boostSlider.value = boostAmount;
+        VisualSetup();
+    }
+
     private void Update()
     {
         if (movement.isRunning)
-            boostAmount -= boostDrainSpeed;
+            boostAmount -= boostDrainSpeed * Time.deltaTime;
 
-        boostSlider.value = Mathf.Lerp(boostSlider.value, boostAmount, 0.2f);
+        boostSlider.value = Mathf.Lerp(boostSlider.value, boostAmount, .2f);
 
         if (boostAmount <= 0 && hasAvailableBoost)
         {
@@ -40,7 +53,7 @@ public class BoostSystem : MonoBehaviour
         }
     }
 
-    private void VisualSetup()
+    void VisualSetup()
     {
         boostMesh.material.SetFloat("_Opacity", 0);
     }
@@ -48,9 +61,9 @@ public class BoostSystem : MonoBehaviour
     public void ActivateBoostVisual()
     {
         boostMesh.material.SetFloat("_TileAmount", 0);
-        boostMesh.material.DOFloat(1,"_Opacity", 0);
-        boostMesh.material.DOFloat(1,"_TileAmount", 0);
-        boostMesh.material.DOFloat(0, "_Opacity", 0.2f).SetDelay(.2f) ;
+        boostMesh.material.DOFloat(1, "_Opacity", .1f);
+        boostMesh.material.DOFloat(1, "_TileAmount", .4f);
+        boostMesh.material.DOFloat(0, "_Opacity", .20f).SetDelay(.2f);
     }
 
     public void AddToBoost()
@@ -63,4 +76,5 @@ public class BoostSystem : MonoBehaviour
     {
         boostAmount = boost;
     }
+
 }

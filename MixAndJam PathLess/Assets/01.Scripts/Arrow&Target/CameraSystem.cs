@@ -65,7 +65,7 @@ public class CameraSystem : MonoBehaviour
             CinemachineComposer composer = thirdPersonCam.GetRig(i).GetCinemachineComponent<CinemachineComposer>();
             float targetScreenPos = targetSystem.lerpedTargetPos.x;
             float characterScreenPos = Camera.main.WorldToScreenPoint(transform.position).x;
-
+             
             cameraOffsetAmount = arrowSystem.isCharging ? originalCameraOffsetAmount * 3 : originalCameraOffsetAmount;
             float targetCharacterDistance = ExtensionMethods.Remap(targetScreenPos - characterScreenPos, -800, 800, -cameraOffsetAmount, cameraOffsetAmount);
             targetCharacterDistance = Mathf.Clamp(targetCharacterDistance, -cameraOffsetAmount, cameraOffsetAmount);

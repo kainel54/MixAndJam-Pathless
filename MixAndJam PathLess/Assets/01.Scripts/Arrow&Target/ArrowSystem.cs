@@ -17,24 +17,24 @@ public class ArrowSystem : MonoBehaviour
     [HideInInspector] public UnityEvent<float> OnArrowRelease;
     [HideInInspector] public UnityEvent OnTargetLost;
 
-    TargetSystem targetSystem;
-    ArrowTarget lockedTarget;
-    Coroutine arrowSystemCooldown;
-    MovementInput movement;
+    private TargetSystem targetSystem;
+    private ArrowTarget lockedTarget;
+    private Coroutine arrowSystemCooldown;
+    private MovementInput movement;
 
     public bool active;
 
     [Header("Arrow Settings")]
     [SerializeField] float arrowCooldown = .5f;
-    [SerializeField] ParticleSystem wrongArrowEmission;
-    [SerializeField] ParticleSystem correctArrowEmission;
-    [SerializeReference] Transform arrowReleasePoint;
+    [SerializeField] private ParticleSystem wrongArrowEmission;
+    [SerializeField] private ParticleSystem correctArrowEmission;
+    [SerializeReference] private Transform arrowReleasePoint;
 
     [Header("Charge Settings")]
     public bool isCharging;
     private bool releaseCooldown;
-    [SerializeField] float chargeDuration = .8f;
-    [SerializeField] Ease chargeEase;
+    [SerializeField] private float chargeDuration = .8f;
+    [SerializeField] private Ease chargeEase;
     private float chargeAmount;
     public float middleChargePrecision = .5f;
 
